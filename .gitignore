@@ -1,0 +1,20 @@
+# Environment
+.env
+# OAuth client and token: the token can read a real mailbox
+secrets/
+.venv/
+__pycache__/
+*.pyc
+
+# Runtime data: may contain applicant documents, never commit it
+data/
+reports/
+
+# Tooling
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
+dist/

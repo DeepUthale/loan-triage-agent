@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Lint
+        run: |
+          uv run ruff format --check src tests app scripts
+          uv run ruff check src tests app scripts
+      - name: Type check
+        run: uv run mypy
+      - name: Test
+        run: uv run pytest --cov
+      - name: Safety gate
+        # Fails the build if any file that needed a person was fast-tracked.
+        run: uv run loan-triage eval --seeds 3

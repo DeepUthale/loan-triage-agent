@@ -1,0 +1,123 @@
+# Credit and triage policy. Illustrative values for a portfolio project, not a real lender's
+# guidelines. The version and a hash of this file are stamped on every audit event, so any
+# decision can be traced to the exact rules that produced it.
+version: "2026.11-1"
+
+required_documents:
+  - loan_application
+  - paystub
+  - w2
+  - bank_statement
+  - credit_report
+
+quality:
+  min_field_confidence: 0.80      # weakest required field must clear this to fast-track
+  max_reextraction_passes: 1      # bounded so a bad scan cannot loop forever
+  unverifiable_confidence_cap: 0.75  # no text layer: quotes cannot be checked against the file
+  ungrounded_confidence_cap: 0.30    # the quoted text is not in the document
+
+validation:
+  income_warn_tolerance: 0.05     # stated vs verified income
+  income_error_tolerance: 0.15
+  w2_divergence_tolerance: 0.20   # W-2 vs paystub-annualized income
+  arithmetic_tolerance: 1.00      # dollars
+  ytd_overage_tolerance: 0.25
+  large_deposit_income_ratio: 1.00  # above one month of gross income, so payroll never trips it
+  name_similarity_threshold: 0.88
+  employer_similarity_threshold: 0.80
+  max_document_age_days:
+    paystub: 60
+    bank_statement: 90
+    credit_report: 120
+
+routing:
+  fast_track_tiers: [low, moderate]
+  max_warnings_for_fast_track: 1
+
+risk:
+  tier_cutoffs:                   # lowest score in each tier
+    moderate: 20
+    high: 45
+    severe: 70
+  core_factors: [dti, ltv, credit_score]   # any missing makes the tier indeterminate
+  factors:
+    dti:
+      label: Debt-to-income ratio
+      reason_code: RC01
+      adverse_action_reason: Excessive obligations in relation to income
+      direction: higher_is_worse
+      bands:
+        - {limit: 0.36, points: 0}
+        - {limit: 0.43, points: 15}
+        - {limit: 0.50, points: 30}
+        - {limit: null, points: 45}
+    ltv:
+      label: Loan-to-value ratio
+      reason_code: RC02
+      adverse_action_reason: Value or type of collateral not sufficient
+      direction: higher_is_worse
+      bands:
+        - {limit: 0.80, points: 0}
+        - {limit: 0.90, points: 10}
+        - {limit: 0.97, points: 20}
+        - {limit: null, points: 35}
+    credit_score:
+      label: Credit score
+      reason_code: RC03
+      adverse_action_reason: Credit score does not meet program requirements
+      direction: lower_is_worse
+      bands:
+        - {limit: 740, points: 0}
+        - {limit: 680, points: 10}
+        - {limit: 620, points: 25}
+        - {limit: null, points: 45}
+    reserves_months:
+      label: Liquid reserves (months of housing payment)
+      reason_code: RC04
+      adverse_action_reason: Insufficient funds to close or for reserves
+      direction: lower_is_worse
+      bands:
+        - {limit: 6, points: 0}
+        - {limit: 2, points: 8}
+        - {limit: null, points: 18}
+    employment_tenure_months:
+      label: Tenure with current employer (months)
+      reason_code: RC05
+      adverse_action_reason: Length of employment
+      direction: lower_is_worse
+      bands:
+        - {limit: 24, points: 0}
+        - {limit: 12, points: 6}
+        - {limit: null, points: 14}
+    delinquencies_24m:
+      label: Delinquencies in the last 24 months
+      reason_code: RC06
+      adverse_action_reason: Delinquent past or present credit obligations
+      direction: higher_is_worse
+      bands:
+        - {limit: 0, points: 0}
+        - {limit: 1, points: 12}
+        - {limit: null, points: 25}
+    public_records:
+      label: Public records on file
+      reason_code: RC07
+      adverse_action_reason: Bankruptcy, judgment, or lien on file
+      direction: higher_is_worse
+      bands:
+        - {limit: 0, points: 0}
+        - {limit: null, points: 30}
+    nsf_count:
+      label: NSF or overdraft items on the statement
+      reason_code: RC08
+      adverse_action_reason: Unsatisfactory account history
+      direction: higher_is_worse
+      bands:
+        - {limit: 0, points: 0}
+        - {limit: 2, points: 6}
+        - {limit: null, points: 14}
+  # A knockout does not decline a file. It guarantees a human sees it.
+  knockouts:
+    - {factor: dti, above: 0.50}
+    - {factor: ltv, above: 1.00}
+    - {factor: credit_score, below: 580}
+    - {factor: public_records, above: 0}
